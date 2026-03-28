@@ -1,67 +1,87 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from src.data_loader import load_transactions, load_card_status, load_locations, create_master_dataset
-from src.feature_engineering import create_features
-from src.clustering import perform_clustering
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 st.set_page_config(layout="wide")
 
-st.title("Telangana PDS Analytics Dashboard")
-
 @st.cache_data
 def load_data():
+    return pd.read_csv("../data/processed/final_data.csv")
 
-    transactions = load_transactions("data/raw")
-    cards = load_card_status("data/raw/card_status.csv")
-    locations = load_locations("data/raw/fps_locations.csv")
+df = load_data()
 
-    master = create_master_dataset(transactions, cards, locations)
-    master = create_features(master)
-    master, score = perform_clustering(master)
+st.title("📊 Telangana PDS Analytics Dashboard")
 
-    return master, score
+# ================= FILTERS =================
+district = st.sidebar.selectbox("District", ["All"] + list(df['distcode'].unique()))
+year = st.sidebar.selectbox("Year", ["All"] + sorted(df['year'].dropna().unique()))
 
+if district != "All":
+    df = df[df['distcode'] == district]
 
-df, sil_score = load_data()
+if year != "All":
+    df = df[df['year'] == year]
 
-st.sidebar.header("Filters")
+# ================= KPIs =================
+col1, col2, col3 = st.columns(3)
 
-district = st.sidebar.selectbox("Select District", df["district"].unique())
-year = st.sidebar.selectbox("Select Year", df["year"].unique())
+col1.metric("Total Shops", df['shopno'].nunique())
+col2.metric("Avg Utilization", round(df['utilization_ratio'].mean(), 2))
+col3.metric("Anomalies", len(df[df['anomaly'] == -1]))
 
-filtered_df = df[(df["district"] == district) & (df["year"] == year)]
+# ================= TIME SERIES =================
+st.subheader("📅 Monthly Trend")
 
-st.metric("Silhouette Score", round(sil_score, 3))
+trend = df.groupby('month')['nooftrans'].sum().reset_index()
+fig = px.line(trend, x='month', y='nooftrans')
+st.plotly_chart(fig)
 
-col1, col2 = st.columns(2)
+# ================= CORRELATION =================
+st.subheader("📊 Correlation (Ration vs Transactions)")
 
-with col1:
-    fig = px.scatter(
-        filtered_df,
-        x="PC1",
-        y="PC2",
-        color="kmeans_cluster",
-        title="Cluster Visualization (PCA)"
+fig, ax = plt.subplots()
+sns.scatterplot(x=df['totalrcs'], y=df['nooftrans'], ax=ax)
+st.pyplot(fig)
+
+# ================= CLUSTER =================
+st.subheader("📍 Cluster Visualization")
+
+fig = px.scatter(df, x='pca1', y='pca2', color='cluster')
+st.plotly_chart(fig)
+
+# ================= MAP =================
+if 'latitude' in df.columns:
+    st.subheader("🗺️ Shop Map")
+    fig = px.scatter_mapbox(
+        df,
+        lat="latitude",
+        lon="longitude",
+        color="cluster",
+        zoom=5,
+        mapbox_style="carto-positron"
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig)
 
-with col2:
-    fig2 = px.histogram(
-        filtered_df,
-        x="utilization_ratio",
-        color="kmeans_cluster",
-        title="Utilization Distribution"
-    )
-    st.plotly_chart(fig2, use_container_width=True)
+# ================= COMMODITY =================
+if 'rice' in df.columns:
+    st.subheader("🍚 Rice Distribution")
+    st.bar_chart(df.groupby('distcode')['rice'].mean())
 
-st.subheader("Search Shop Performance")
+# ================= SEARCH =================
+st.subheader("🔍 Shop Comparison")
 
-shop_id = st.text_input("Enter Shop Number")
+shop = st.text_input("Enter Shop Number")
 
-if shop_id:
-    shop_data = df[df["shopNo"] == int(shop_id)]
+if shop:
+    shop_data = df[df['shopno'].astype(str) == shop]
+
     if not shop_data.empty:
-        st.write(shop_data)
-    else:
-        st.warning("Shop not found")
+        cluster_id = shop_data['cluster'].values[0]
+        cluster_avg = df[df['cluster'] == cluster_id]['utilization_ratio'].mean()
+
+        st.write("Shop Data:")
+        st.dataframe(shop_data)
+
+        st.write(f"Cluster Avg Utilization: {cluster_avg}")

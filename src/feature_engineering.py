@@ -1,16 +1,13 @@
-import numpy as np
-
 def create_features(df):
 
-    df["utilization_ratio"] = df["noOfTrans"] / (df["totalRcs"] + 1)
+    # Utilization Ratio
+    if 'nooftrans' in df.columns and 'totalrcs' in df.columns:
+        df['utilization_ratio'] = df['nooftrans'] / (df['totalrcs'] + 1)
+    else:
+        df['utilization_ratio'] = 0
 
-    df["rice_wheat_ratio"] = df["riceQty"] / (df["wheatQty"] + 1)
-
-    volatility = df.groupby("shopNo")["noOfTrans"].std().reset_index()
-    volatility.columns = ["shopNo", "transaction_volatility"]
-
-    df = df.merge(volatility, on="shopNo", how="left")
-
-    df.fillna(0, inplace=True)
+    # Commodity ratio
+    if 'rice' in df.columns and 'wheat' in df.columns:
+        df['rice_wheat_ratio'] = df['rice'] / (df['wheat'] + 1)
 
     return df

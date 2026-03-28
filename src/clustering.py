@@ -1,37 +1,29 @@
 from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans, DBSCAN
-from sklearn.metrics import silhouette_score
-import pandas as pd
+from sklearn.decomposition import PCA
 
-def perform_clustering(df):
+def apply_clustering(df):
 
-    features = df[[
-        "utilization_ratio",
-        "rice_wheat_ratio",
-        "transaction_volatility",
-        "noOfTrans",
-        "totalRcs"
-    ]]
+    features = ['utilization_ratio']
+
+    X = df[features]
 
     scaler = StandardScaler()
-    scaled_data = scaler.fit_transform(features)
+    X_scaled = scaler.fit_transform(X)
 
     # PCA
     pca = PCA(n_components=2)
-    pca_data = pca.fit_transform(scaled_data)
+    pca_result = pca.fit_transform(X_scaled)
 
-    df["PC1"] = pca_data[:, 0]
-    df["PC2"] = pca_data[:, 1]
+    df['pca1'] = pca_result[:, 0]
+    df['pca2'] = pca_result[:, 1]
 
     # KMeans
     kmeans = KMeans(n_clusters=4, random_state=42)
-    df["kmeans_cluster"] = kmeans.fit_predict(scaled_data)
+    df['cluster'] = kmeans.fit_predict(X_scaled)
 
     # DBSCAN
-    dbscan = DBSCAN(eps=0.8, min_samples=10)
-    df["dbscan_cluster"] = dbscan.fit_predict(scaled_data)
+    dbscan = DBSCAN(eps=0.5, min_samples=5)
+    df['anomaly'] = dbscan.fit_predict(X_scaled)
 
-    score = silhouette_score(scaled_data, df["kmeans_cluster"])
-
-    return df, score
+    return df
