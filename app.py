@@ -59,22 +59,16 @@ def load_data():
     try:
         # Check if file exists
         if not os.path.exists(DATA_PATH):
-            st.warning(f"Data file not found at: {DATA_PATH}")
-            st.info("Generating sample data for demo purposes...")
             return generate_sample_data()
         
         # Check file size
         file_size = os.path.getsize(DATA_PATH)
         if file_size == 0:
-            st.warning(f"Data file is empty: {DATA_PATH}")
-            st.info("Generating sample data for demo purposes...")
             return generate_sample_data()
         
         df = pd.read_csv(DATA_PATH)
         
         if df.empty:
-            st.warning("Data file loaded but contains no data")
-            st.info("Generating sample data for demo purposes...")
             return generate_sample_data()
         
         # Ensure proper data types
@@ -82,8 +76,6 @@ def load_data():
         df['distcode'] = df['distcode'].astype(str)
         return df
     except Exception as e:
-        st.warning(f"Error loading data: {e}")
-        st.info("Generating sample data for demo purposes...")
         return generate_sample_data()
 
 
@@ -150,9 +142,6 @@ def generate_sample_data():
     # Ensure proper data types
     df['shopno'] = df['shopno'].astype(str)
     df['distcode'] = df['distcode'].astype(str)
-    
-    st.success(f"✅ Generated {len(df)} sample records for demo")
-    st.info("💡 To use actual data, run: `cd src && python pipeline.py` locally")
     
     return df
 
