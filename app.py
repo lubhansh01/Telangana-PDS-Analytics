@@ -59,36 +59,109 @@ def load_data():
     try:
         # Check if file exists
         if not os.path.exists(DATA_PATH):
-            st.error(f"Data file not found at: {DATA_PATH}")
-            return pd.DataFrame()
+            st.warning(f"Data file not found at: {DATA_PATH}")
+            st.info("Generating sample data for demo purposes...")
+            return generate_sample_data()
         
         # Check file size
         file_size = os.path.getsize(DATA_PATH)
         if file_size == 0:
-            st.error(f"Data file is empty: {DATA_PATH}")
-            return pd.DataFrame()
+            st.warning(f"Data file is empty: {DATA_PATH}")
+            st.info("Generating sample data for demo purposes...")
+            return generate_sample_data()
         
         df = pd.read_csv(DATA_PATH)
         
         if df.empty:
-            st.error("Data file loaded but contains no data")
-            return pd.DataFrame()
+            st.warning("Data file loaded but contains no data")
+            st.info("Generating sample data for demo purposes...")
+            return generate_sample_data()
         
         # Ensure proper data types
         df['shopno'] = df['shopno'].astype(str)
         df['distcode'] = df['distcode'].astype(str)
         return df
     except Exception as e:
-        st.error(f"Error loading data: {e}")
-        return pd.DataFrame()
+        st.warning(f"Error loading data: {e}")
+        st.info("Generating sample data for demo purposes...")
+        return generate_sample_data()
+
+
+def generate_sample_data():
+    """
+    Generate sample data for demo purposes when actual data is not available.
+    This allows the dashboard to be deployed without the large data file.
+    """
+    np.random.seed(42)
+    
+    # Sample districts
+    districts = ['Adilabad', 'Hyderabad', 'Karimnagar', 'Khammam', 'Medak', 
+                 'Nalgonda', 'Nizamabad', 'Rangareddy', 'Warangal']
+    district_codes = ['532', '540', '541', '542', '543', '544', '545', '546', '547']
+    
+    # Generate sample shops
+    n_records = 5000
+    data = {
+        'shopno': [f"1901{i:04d}" for i in range(n_records)],
+        'distcode': np.random.choice(district_codes, n_records),
+        'distname': np.random.choice(districts, n_records),
+        'officecode': np.random.choice(['532001', '540001', '541001'], n_records),
+        'officename': np.random.choice(['Talamadugu', 'Hyderabad Central', 'Karimnagar East'], n_records),
+        'nooftrans': np.random.randint(50, 2000, n_records),
+        'totalrcs': np.random.randint(100, 1500, n_records),
+        'totalunits': np.random.randint(500, 5000, n_records),
+        'month': np.random.choice([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], n_records),
+        'year': np.random.choice([2023, 2024, 2025], n_records),
+        'othershoptranscnt': np.random.randint(0, 200, n_records),
+        'totalamount': np.random.uniform(1000, 50000, n_records),
+        'latitude': np.random.uniform(16.0, 19.5, n_records),
+        'longitude': np.random.uniform(77.5, 81.0, n_records),
+        'fpsstatus': np.random.choice(['Active', 'Active', 'Active', 'Inactive'], n_records),
+        'fpstype': np.random.choice(['Normal Shop', 'Normal Shop', 'Portability Hub'], n_records),
+    }
+    
+    df = pd.DataFrame(data)
+    
+    # Calculate derived features
+    df['utilization_ratio'] = df['nooftrans'] / (df['totalrcs'] + 1)
+    df['portability_ratio'] = df['othershoptranscnt'] / (df['nooftrans'] + 1)
+    df['amount_per_card'] = df['totalamount'] / (df['totalrcs'] + 1)
+    df['units_per_card'] = df['totalunits'] / (df['totalrcs'] + 1)
+    df['efficiency_score'] = df['nooftrans'] / (df['totalunits'] + 1)
+    df['commodity_count'] = np.random.randint(1, 6, n_records)
+    df['nfsa_ratio'] = np.random.uniform(0.3, 0.9, n_records)
+    df['trans_volatility'] = np.random.uniform(0, 50, n_records)
+    df['trans_mean'] = df['nooftrans']
+    df['trans_cv'] = np.random.uniform(0, 0.5, n_records)
+    df['is_festival_season'] = df['month'].isin([10, 11, 12]).astype(int)
+    df['is_harvest_season'] = df['month'].isin([4, 5]).astype(int)
+    df['quarter'] = ((df['month'] - 1) // 3 + 1).astype(int)
+    df['year_month'] = df['year'].astype(str) + '-' + df['month'].astype(str).str.zfill(2)
+    df['zero_transactions'] = (df['nooftrans'] == 0).astype(int)
+    df['high_utilization'] = (df['utilization_ratio'] > df['utilization_ratio'].quantile(0.95)).astype(int)
+    df['low_utilization'] = (df['utilization_ratio'] < df['utilization_ratio'].quantile(0.05)).astype(int)
+    
+    # Add clustering results
+    df['cluster'] = np.random.choice([0, 1, 2, 3], n_records)
+    df['anomaly'] = np.random.choice([0, 0, 0, 0, -1], n_records)  # 20% anomalies
+    df['pca1'] = np.random.normal(0, 1, n_records)
+    df['pca2'] = np.random.normal(0, 1, n_records)
+    
+    # Ensure proper data types
+    df['shopno'] = df['shopno'].astype(str)
+    df['distcode'] = df['distcode'].astype(str)
+    
+    st.success(f"✅ Generated {len(df)} sample records for demo")
+    st.info("💡 To use actual data, run: `cd src && python pipeline.py` locally")
+    
+    return df
+
 
 # Load data
 df = load_data()
 
 if df.empty:
-    st.error("No data available. Please run the pipeline first.")
-    st.info(f"Expected data file location: {DATA_PATH}")
-    st.info(f"Current working directory: {os.getcwd()}")
+    st.error("Failed to load or generate data.")
     st.stop()
 
 # ================= SIDEBAR =================
