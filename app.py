@@ -6,8 +6,13 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import folium
 from streamlit_folium import st_folium
+import os
 import warnings
 warnings.filterwarnings('ignore')
+
+# Get the directory where the app.py is located
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_PATH = os.path.join(BASE_DIR, "data", "processed", "final_data.csv")
 
 # ================= CONFIG =================
 st.set_page_config(
@@ -52,7 +57,23 @@ st.markdown("""
 @st.cache_data
 def load_data():
     try:
-        df = pd.read_csv("data/processed/final_data.csv")
+        # Check if file exists
+        if not os.path.exists(DATA_PATH):
+            st.error(f"Data file not found at: {DATA_PATH}")
+            return pd.DataFrame()
+        
+        # Check file size
+        file_size = os.path.getsize(DATA_PATH)
+        if file_size == 0:
+            st.error(f"Data file is empty: {DATA_PATH}")
+            return pd.DataFrame()
+        
+        df = pd.read_csv(DATA_PATH)
+        
+        if df.empty:
+            st.error("Data file loaded but contains no data")
+            return pd.DataFrame()
+        
         # Ensure proper data types
         df['shopno'] = df['shopno'].astype(str)
         df['distcode'] = df['distcode'].astype(str)
@@ -66,6 +87,8 @@ df = load_data()
 
 if df.empty:
     st.error("No data available. Please run the pipeline first.")
+    st.info(f"Expected data file location: {DATA_PATH}")
+    st.info(f"Current working directory: {os.getcwd()}")
     st.stop()
 
 # ================= SIDEBAR =================
