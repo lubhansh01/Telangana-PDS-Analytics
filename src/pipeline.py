@@ -22,7 +22,7 @@ def run_pipeline():
     os.makedirs("../data/processed", exist_ok=True)
     df.to_csv("../data/processed/final_data.csv", index=False)
 
-    print("✅ Done!")
+    print("✅ Pipeline completed successfully!")
 
 
 if __name__ == "__main__":
